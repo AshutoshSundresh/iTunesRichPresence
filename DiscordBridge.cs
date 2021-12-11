@@ -82,7 +82,25 @@ namespace iTunesRichPresence_Rewrite {
 
             return s + "...";
         }
+   
+        // credit: https://stackoverflow.com/a/52906286 with small changes
+        public void wait (int sec) {
+            var timer1 = new System.Windows.Forms.Timer();
+            if (sec == 0 || sec < 0) return;
 
+            timer1.Interval = sec * 1000; // convert seconds to milliseconds
+            timer1.Enabled  = true;
+            timer1.Start();
+
+            timer1.Tick += (s, e) => {
+                timer1.Enabled = false;
+                timer1.Stop();
+            };
+            while (timer1.Enabled) {
+                Application.DoEvents();
+            }
+        }        
+             
         /// <summary>
         /// Handles checking for playing status changes and pushing out presence updates
         /// </summary>
@@ -94,7 +112,12 @@ namespace iTunesRichPresence_Rewrite {
                     ITunes = new iTunesApp();
                 }
 
-                if (ITunes.CurrentTrack == null || (Settings.Default.ClearOnPause && ITunes.PlayerState != ITPlayerState.ITPlayerStatePlaying)) {
+                if (hasMusicBeenPausedForLongEnough() != null) {
+                    if (ITunes.CurrentTrack == null || (Settings.Default.ClearOnPause && ITunes.PlayerState != ITPlayerState.ITPlayerStatePlaying) || (!Settings.Default.ClearOnPause && hasMusicBeenPausedForLongEnough())) {
+                        DiscordRpc.ClearPresence();
+                        return;
+                    }
+                } else if (ITunes.CurrentTrack == null || (Settings.Default.ClearOnPause && ITunes.PlayerState != ITPlayerState.ITPlayerStatePlaying)) {
                     DiscordRpc.ClearPresence();
                     return;
                 }
@@ -119,7 +142,6 @@ namespace iTunesRichPresence_Rewrite {
                 return;
             }
             
-
             if (_currentArtist == ITunes.CurrentTrack.Artist && _currentTitle == ITunes.CurrentTrack.Name &&
                 _currentState == ITunes.PlayerState && _currentPosition == ITunes.PlayerPosition) return;
 
@@ -158,7 +180,23 @@ namespace iTunesRichPresence_Rewrite {
             }
             
         }
-
+        
+        private bool hasMusicBeenPausedForLongEnough() {
+            if (ITunes.PlayerState != ITPlayerState.ITPlayerStatePlaying) {
+                for (int i = 1; i < 6; i++) {
+                    if (ITunes.PlayerState != ITPlayerState.ITPlayerStatePlaying) {
+                        wait(30);
+                        if (i==5) {
+                            return true;
+                        }
+                    } else {
+                        return false; 
+                    }
+                }
+            }
+            return false;
+        }    
+        
         /// <summary>
         /// Disconnects from DiscordRPC and shuts down the bridge
         /// </summary>

@@ -84,22 +84,23 @@ namespace iTunesRichPresence_Rewrite {
         }
    
         // credit: https://stackoverflow.com/a/52906286 with small changes
-        public void wait (int sec) {
+        public void Wait(int sec) {
             var timer1 = new System.Windows.Forms.Timer();
-            if (sec == 0 || sec < 0) return;
+            if (sec <= 0) return;
 
             timer1.Interval = sec * 1000; // convert seconds to milliseconds
-            timer1.Enabled  = true;
+            timer1.Enabled = true;
             timer1.Start();
 
             timer1.Tick += (s, e) => {
                 timer1.Enabled = false;
                 timer1.Stop();
             };
+        
             while (timer1.Enabled) {
                 Application.DoEvents();
             }
-        }        
+        }    
              
         /// <summary>
         /// Handles checking for playing status changes and pushing out presence updates
@@ -112,8 +113,8 @@ namespace iTunesRichPresence_Rewrite {
                     ITunes = new iTunesApp();
                 }
 
-                if (hasMusicBeenPausedForLongEnough() != null) {
-                    if (ITunes.CurrentTrack == null || (Settings.Default.ClearOnPause && ITunes.PlayerState != ITPlayerState.ITPlayerStatePlaying) || (!Settings.Default.ClearOnPause && hasMusicBeenPausedForLongEnough())) {
+                if (HasMusicBeenPausedForLongEnough() != null) {
+                    if (ITunes.CurrentTrack == null || (Settings.Default.ClearOnPause && ITunes.PlayerState != ITPlayerState.ITPlayerStatePlaying) || (!Settings.Default.ClearOnPause && HasMusicBeenPausedForLongEnough())) {
                         DiscordRpc.ClearPresence();
                         return;
                     }
@@ -181,21 +182,21 @@ namespace iTunesRichPresence_Rewrite {
             
         }
         
-        private bool hasMusicBeenPausedForLongEnough() {
+        private bool HasMusicBeenPausedForLongEnough() {
             if (ITunes.PlayerState != ITPlayerState.ITPlayerStatePlaying) {
-                for (int i = 1; i < 6; i++) {
+                for (int i = 1; i <= 5; i++) {
+                    Wait(30); // wait for 30 seconds
                     if (ITunes.PlayerState != ITPlayerState.ITPlayerStatePlaying) {
-                        wait(30);
-                        if (i==5) {
-                            return true;
+                        if (i == 5) {
+                            return true; // music has been paused for long enough
                         }
                     } else {
-                        return false; 
+                        return false; // music is playing again
                     }
                 }
             }
-            return false;
-        }    
+            return false; // music is playing
+        }
         
         /// <summary>
         /// Disconnects from DiscordRPC and shuts down the bridge
